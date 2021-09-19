@@ -103,8 +103,9 @@ int WorkWithWord (int fd_in, int fd_out, char* mini_buf)
     int check_end = -1; // ToDo: Is it correct?
     off_t word_pos = 1; // one symbol was read already
 
-    int last_num = NO_NUMS;
-    int sum_in_3 = 0;
+    int last_num  = NO_NUMS, 
+        sum_in_3  = 0, 
+        was_point = 0;
 
     if (*mini_buf == '-' || *mini_buf == '+')
     {
@@ -114,14 +115,30 @@ int WorkWithWord (int fd_in, int fd_out, char* mini_buf)
 
     while (check_end)
     {
+        #define PRINT_WORD return WriteWhileMode (fd_in, fd_out, word_pos, mini_buf, WORD)
         if (IsTab (*mini_buf))
             break;
 
-        if (!isdigit (*mini_buf)) // ToDo: add work with point
-            return WriteWhileMode (fd_in, fd_out, word_pos, mini_buf, WORD);
+        if (*mini_buf == '.' || *mini_buf == ',')
+        {
+            if (was_point)
+                PRINT_WORD;
+            
+            was_point = 1;
+            READ;
+            word_pos++;
+            continue;
+        }
+        else if (!isdigit (*mini_buf))
+            PRINT_WORD;
 
-        last_num = *mini_buf - '0';
-        sum_in_3 = (sum_in_3 + last_num) % 3;
+        if (!was_point)
+        {
+            last_num = *mini_buf - '0';
+            sum_in_3 = (sum_in_3 + last_num) % 3;
+        }
+        else if (*mini_buf != '0')
+            PRINT_WORD;
 
         READ;
         word_pos++;
@@ -177,126 +194,3 @@ int WriteWhileMode (int fd_in, int fd_out, off_t num_symb, char* mini_buf, Write
 
     return check_end;
 }
-
-/* 
-// AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-
-// Sem1
-
-void PrintArg (char* arg)
-{
-    assert (arg);
-
-    char* save_arg = arg;
-    int last_num = NO_NUMS;
-    int sum_in_3 = 0;
-
-    SkipTabs (&arg);
-    if (*arg == '-')
-        arg++;
-
-    while (isdigit (*arg))
-    {
-        last_num = *arg - '0';
-        sum_in_3 = (sum_in_3 + last_num) % 3;
-        arg++;
-    }
-
-    SkipTabs (&arg);
-    if (*arg || last_num == NO_NUMS || (sum_in_3 != 0 && last_num % 5 != 0))
-    {
-        printf ("%s ", save_arg);
-        return;
-    }
-
-    if (sum_in_3 == 0)
-        printf ("bizz");
-
-    if (last_num == 0 || last_num == 5)
-        printf ("buzz");
-
-    printf (" ");
-    return; 
-}
-
-// AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-
-// Sem2
-
-int MyCp (const char* file_in, const char* file_out)
-{
-    assert (file_in);
-    assert (file_out);
-
-    int fd_in  = open (file_in, O_RDONLY);
-    int fd_out = open (file_out, O_WRONLY | O_CREAT, 0666);
-    char buf[BUF_SIZE] = "";
-
-    #define return_err {                    \
-                           close (fd_in);   \
-                           close (fd_out);  \
-                           return 1;        \
-                       }
-
-    if (fd_in == -1 || fd_out == -1)
-        return_err;
-
-    int read_num = -1;
-    while ((read_num = read (fd_in, buf, BUF_SIZE)) > 0)
-    {
-        if (write (fd_out, buf, read_num) != read_num)
-            return_err;
-    }
-
-    if (read_num == -1)
-        return_err;
-
-    close (fd_in); 
-    close (fd_out);
-    return 0;   
-} 
-
-// AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-
-// Old functions
-
-int SkipTabs (int fd_in, int fd_out, char* mini_buf)
-{
-    assert (mini_buf);
-    assert (fd_in  >= 0);
-    assert (fd_out >= 0);
-
-    int return_value = -1;
-    off_t num_tabs  = 0;
-
-    while (IsTab (*mini_buf))
-    {
-        SAVE_MODE (return_value = read (fd_in, mini_buf, 1), CLOSE_FILES);
-        if (return_value == 0)
-            return 0;
-        num_tabs++;
-    }
-
-    SAVE_MODE (WriteFile (fd_in, fd_out, num_tabs), NO_ACT);
-    return num_tabs;
-}
-
-int WriteFdToFd (int fd_in, int fd_out, off_t num_symb)
-{
-    assert (fd_in  >= 0);
-    assert (fd_out >= 0);
-    assert (num_symb >= 0);
-
-    SAVE_MODE (lseek (fd_in, -num_symb, SEEK_CUR), CLOSE_FILES);
-    
-    for (off_t i_symb = 0; i_symb < num_symb; i_symb++)
-    {
-        char mini_buf = '\0';
-        SAVE_MODE (read  (fd_in,  &mini_buf, 1), CLOSE_FILES);
-        SAVE_MODE (write (fd_out, &mini_buf, 1), CLOSE_FILES);
-    }
-
-    return 0;
-}
-
-*/
