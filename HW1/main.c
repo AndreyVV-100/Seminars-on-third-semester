@@ -284,8 +284,7 @@ int BufferedLseek (File* file, off_t offset) // ToDo: SEEK_SET, SEEK_END
     else
     {
         int ret = 0;
-        SAVE_MODE (ret = lseek (file->fd, offset - 1, SEEK_CUR), NO_ACT); // ToDo: Why -1?
-        file->pos_in_buf = 0;
+        SAVE_MODE (ret = lseek (file->fd, offset - (file->buf_end - file->pos_in_buf), SEEK_CUR), NO_ACT);
         file->buf_end    = 0;
     }
 
