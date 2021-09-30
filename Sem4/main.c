@@ -10,33 +10,30 @@
 int main()
 {
     const int PROCESS_NUM = 1024;
-    srand (time (NULL));
 
-    for (int i_pr = 0; i_pr < PROCESS_NUM; i_pr++)
-    {
-        int ret = rand();
-        if (!fork()) // ToDo: think about it
-            return ret;
-    }
-
-    int fd = -1;
+    int fd = -1, child_pid = 0;
     char buf[256] = "";
+    unlink ("out.txt");
     if ((fd = open ("out.txt", O_WRONLY | O_CREAT, 0666)) == -1)
         return 0;
 
-    for (int i_pr = 0; i_pr < PROCESS_NUM; i_pr++)
+    int num_write = sprintf (buf, "PID = %d, return = %d.\n", getpid(), 0); // 1024 processes
+    write (fd, buf, num_write);
+
+    // create 1024 = 2^10 processes
+    for (int i_proc = 0; i_proc < 10; i_proc++)
     {
         int wstatus = 0;
-        int child = wait (&wstatus);
-
-        if (WIFEXITED (wstatus))
+        fork();
+        child_pid = wait (&wstatus);
+        if (child_pid > 0 && WIFEXITED (wstatus))
         {
-            int size = sprintf (buf, "%d: %d\n", child, WEXITSTATUS (wstatus));
-            if (write (fd, buf, size) == -1)
-                return 0;
+            num_write = sprintf (buf, "PID = %d, return = %d.\n", child_pid, WEXITSTATUS (wstatus));
+            write (fd, buf, num_write);
         }
     }
 
     close (fd);
-    return 0;
+    srand (child_pid);
+    return rand();
 }
