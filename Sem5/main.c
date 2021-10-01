@@ -4,7 +4,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-
+// my realization ">" in console
 int main (int argc, char** argv)
 {
     if (argc < 3)

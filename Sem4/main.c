@@ -7,6 +7,7 @@
 #include <time.h>
 #include <stdlib.h>
 
+// creates 1024 processes and write information about it
 int main()
 {
     const int PROCESS_NUM = 1024;

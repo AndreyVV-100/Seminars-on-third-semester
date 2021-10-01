@@ -1,3 +1,8 @@
 */*.txt
-*/a.out
+*/*.out
+
+*/*out*
+*/*in*
 */*test*
+*/*pipe*
+*/*fifo*
