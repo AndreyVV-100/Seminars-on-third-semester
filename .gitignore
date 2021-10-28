@@ -2,7 +2,9 @@
 */*.out
 
 */*out*
-*/*in*
+*/in*
 */*test*
 */*pipe*
 */*fifo*
+
+.vscode
