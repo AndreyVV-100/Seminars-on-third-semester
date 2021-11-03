@@ -130,7 +130,11 @@ void Handler (int sig, siginfo_t* info, __attribute__((unused)) void* zachem_eto
     else
     {
         buf += ((char) (sig - ALIGN)) << HALF_BYTE_SIZE;
-        write (FD, &buf, 1);
+        if (write (FD, &buf, 1) <= 0)
+        {
+            perror ("Write error");
+            NOT_SENDED = 0;
+        }
         write_now = 0;
     }
 
