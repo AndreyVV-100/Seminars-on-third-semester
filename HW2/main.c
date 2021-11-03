@@ -25,6 +25,9 @@ void PtrsDestructor (char* buf, char*** exec_info, size_t prog_num);
 // my realization "|" in console
 int main (int argc, char** argv)
 {
+    char* buf = NULL;
+    char*** exec_info = NULL;
+
     if (argc < 2)
     {
         fprintf (stderr, "Error: too few parameters.\n");
@@ -32,10 +35,13 @@ int main (int argc, char** argv)
     }
     size_t prog_num = 0;
 
-    char* buf = FileToBuf (argv[1]);
-    char*** exec_info = ParseString (buf, &prog_num);
+    buf = FileToBuf (argv[1]);
+
+    if (buf)
+        exec_info = ParseString (buf, &prog_num);
     // CheckParse (exec_info, prog_num);
-    ExecProgs (exec_info, prog_num);
+    if (exec_info)
+        ExecProgs (exec_info, prog_num);
 
     PtrsDestructor (buf, exec_info, prog_num);
     return 0;
@@ -60,7 +66,9 @@ char* FileToBuf (const char* path)
     }
 
     char* buf = (char*) calloc (st.st_size + 1, sizeof (*buf));
-    read (fd, buf, st.st_size);
+
+    if (buf)
+        read (fd, buf, st.st_size);
     close (fd);
     return buf;
 }
@@ -71,6 +79,9 @@ char*** ParseString (char* buf, size_t* prog_num)
 
     *prog_num = CountProg (buf);
     char*** progs = (char***) calloc (*prog_num, sizeof (*progs));
+    if (!progs)
+        return NULL;
+
     char* i_prog = buf;
 
     for (size_t i_prog_num = 0; i_prog; i_prog_num++)
@@ -151,7 +162,11 @@ char** ParseArgs (char* parse_str)
         }
 
         if (!i_mode)
+        {
             arg_list = (char**) calloc (args_num + 1, sizeof (*arg_list));
+            if (!arg_list)
+                return NULL;
+        }
         else
             arg_list[args_num] = NULL;
     }
@@ -233,7 +248,7 @@ void ExecProgs (char*** exec_info, size_t prog_num)
             } */
 
             // fprintf (stderr, "%zu |%s| %x\n", i_pipe, exec_info[0][0], exec_info[0][1]);
-            perror ("Calling error");
+            perror (exec_info[i_pipe][0]);
             break;
         }
     }
@@ -254,8 +269,12 @@ void ExecProgs (char*** exec_info, size_t prog_num)
 void PtrsDestructor (char* buf, char*** exec_info, size_t prog_num)
 {
     free (buf);
-    for (size_t i_prog = 0; i_prog < prog_num; i_prog++)
-        free (exec_info[i_prog]);
+
+    if (exec_info)
+    {
+        for (size_t i_prog = 0; i_prog < prog_num; i_prog++)
+            free (exec_info[i_prog]);
+    }
     free (exec_info);
     return;
 }

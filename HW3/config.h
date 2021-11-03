@@ -1,0 +1,5 @@
+#define ALIGN 34
+#define  LOW_HALF_BYTE_MASK 0x0F
+#define HIGH_HALF_BYTE_MASK 0xF0
+#define HALF_BYTE_SIZE 4
+const int KEY_CONST = 300;
