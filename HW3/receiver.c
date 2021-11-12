@@ -65,6 +65,7 @@ int main (int argc, char** argv)
         return 0;
     }
 
+    semop (SEM_IND, &CHANGE_SEM, 1);
     while (NOT_SENDED) sleep (1);
     close (FD);
     semctl (SEM_IND, 1, IPC_RMID);
@@ -120,7 +121,10 @@ void Handler (int sig, siginfo_t* info, __attribute__((unused)) void* zachem_eto
         return;
 
     if (SI_PID != info->si_pid)
+    {
+        semop (SEM_IND, &CHANGE_SEM, 1);
         return;
+    }
 
     if (!write_now)
     {

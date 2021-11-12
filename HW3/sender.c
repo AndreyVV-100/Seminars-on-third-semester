@@ -94,6 +94,7 @@ int GetFile (const char* filename, File* file)
 // first - low, second, high byte
 void SendFile (File file)
 {
+    semop (SEM_IND, &CHANGE_SEM, 1);
     SEND_SIG (SIGUSR1); // start
     semop (SEM_IND, &CHANGE_SEM, 1);
 
