@@ -35,6 +35,7 @@ void Handler      (int sig, siginfo_t* info, void* zachem_eto_pole);
                              return 0;                            \
                          }
 
+// WARNING: Never use this code
 int main (int argc, char** argv)
 {
     if (argc != 2)
@@ -55,20 +56,11 @@ int main (int argc, char** argv)
     sig_act.sa_sigaction = ConfigSending;
     SET_ACT (SIGUSR1);
     SET_ACT (SIGUSR2);
+    SET_ACT (SIGINT);
 
-    key_t key = ftok ("sender.c", KEY_CONST);
-    SEM_IND = semget (key, 2, IPC_CREAT | 0666); 
-    if (SEM_IND < 0)
-    {
-        perror ("Something went wrong with sem");
-        close (FD);
-        return 0;
-    }
-
-    semop (SEM_IND, &CHANGE_SEM, 1);
-    while (NOT_SENDED) sleep (1);
+    printf ("Waiting a signal (pid = %d)...\n", getpid());
+    while (NOT_SENDED) { ; } // So bad
     close (FD);
-    semctl (SEM_IND, 1, IPC_RMID);
     return 0;
 }
 #undef SET_ACT
@@ -85,6 +77,16 @@ int GetFile (const char* filename, int* fd)
     return 0;
 }
 
+//------------------------------------------------------------------------------------------------
+
+#define SEND_SIG_WIDE(sig_num, pid) if (kill (pid, sig_num))               \
+                                    {                                      \
+                                        fprintf (stderr, "%d\n", sig_num); \
+                                        perror ("Send error " #sig_num);   \
+                                    }
+
+#define SEND_SIG(sig_num) SEND_SIG_WIDE(sig_num, SI_PID)
+
 void ConfigSending (int sig, siginfo_t* info, __attribute__((unused)) void* zachem_eto_pole)
 {
     #ifdef DEBUG
@@ -93,14 +95,25 @@ void ConfigSending (int sig, siginfo_t* info, __attribute__((unused)) void* zach
                 "  signal = %d\n\n", info->si_pid, sig);
     #endif
 
-    if (SI_PID == 0 && sig == SIGUSR1)
+    if (sig == SIGINT || (SI_PID == info->si_pid && sig == SIGUSR2))
     {
-        SI_PID = info->si_pid;
-        semop (SEM_IND, &CHANGE_SEM, 1);
+        NOT_SENDED = 0;
+        if (SI_PID)
+            SEND_SIG (SIGUSR2);
+        close (FD);
+        exit (0);
     }
 
-    else if (SI_PID == info->si_pid && sig == SIGUSR2)
-        NOT_SENDED = 0;
+    else if (SI_PID == 0 && sig == SIGUSR1)
+    {
+        SI_PID = info->si_pid;
+        SEND_SIG (SIGUSR1);
+    }
+
+    else if (SI_PID != info->si_pid)
+    {
+        SEND_SIG_WIDE (SIGUSR2, info->si_pid);
+    }
 
     return;
 }
@@ -122,7 +135,7 @@ void Handler (int sig, siginfo_t* info, __attribute__((unused)) void* zachem_eto
 
     if (SI_PID != info->si_pid)
     {
-        semop (SEM_IND, &CHANGE_SEM, 1);
+        SEND_SIG_WIDE (SIGUSR2, info->si_pid);
         return;
     }
 
@@ -142,9 +155,12 @@ void Handler (int sig, siginfo_t* info, __attribute__((unused)) void* zachem_eto
         write_now = 0;
     }
 
-    semop (SEM_IND, &CHANGE_SEM, 1);
     #ifdef DEBUG
         printf ("  Ready signal sended!\n\n");
     #endif
+    SEND_SIG (SIGUSR1);
     return;
 }
+
+#undef SEND_SIG
+#undef SEND_SIG_WIDE
