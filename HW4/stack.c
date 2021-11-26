@@ -20,6 +20,17 @@ enum Sizes
     STK_SHIFT
 };
 
+enum WaitModes
+{
+      NO_WAIT = -1,
+     INF_WAIT = 0,
+    TIME_WAIT = 1
+};
+
+static enum WaitModes WAIT_MODE = INF_WAIT;
+static struct timespec TIMEOUT = {};
+static struct timespec MAGIC   = {0, 50000000};
+
 typedef struct
 {
     size_t* data;
@@ -42,24 +53,54 @@ stack_t* attach_stack (key_t key, int size) // ToDo: COPYPASTE!!!! VERY BIG FUNC
         return NULL;
     }
 
-    stack->semid = semget (key, 3, IPC_CREAT | IPC_EXCL | 0666);
+    stack->semid = semget (key, 2, IPC_CREAT | IPC_EXCL | 0666);
     if (stack->semid == -1)
     {
-        errno = 0;
-        stack->semid = semget (key, 3, 0666);
+        errno = 0; 
+        int wait  = 1;
+        struct sembuf sops = {SEM_IS_CREATED, -1, IPC_NOWAIT};
+        stack->semid = semget (key, 2, 0666);
+
         if (stack->semid == -1)
         {
-            perror ("Semaphore error");
             free (stack);
+            /* if (errno == ENOENT)
+            {
+                errno = 0;
+                return attach_stack (key, size);
+            } */
+
+            perror ("Semaphore error");
             return NULL;
         }
 
-        struct sembuf sops = {SEM_IS_CREATED, -1, 0};
-        if (semop (stack->semid, &sops, 1))
+        while (wait)
         {
-            perror ("Semaphore error");
-            free (stack);
-            return NULL;
+            printf ("help me!\n");
+            if (semop (stack->semid, &sops, 1))
+            {
+                if (errno == EAGAIN)
+                {
+                    nanosleep (&MAGIC, NULL);
+                    errno = 0;
+                }
+
+                /* else if (errno == EIDRM)
+                {
+                    free (stack);
+                    errno = 0;
+                    return attach_stack (key, size);
+                } */
+
+                else
+                {
+                    perror ("Semaphore error");
+                    free (stack);
+                    return NULL;
+                }
+            }
+            else
+                wait = 0;
         }
 
         if (GetShm (stack, key, size, 0666))
@@ -79,6 +120,8 @@ stack_t* attach_stack (key_t key, int size) // ToDo: COPYPASTE!!!! VERY BIG FUNC
             free (stack);
             return NULL;
         }
+        stack->data[STK_SIZE] = 0LLU;
+        stack->data[STK_CAPACITY] = (size_t) size;
 
         struct sembuf sops[2] = {{SEM_IS_CREATED,  1, 0},
                                  {SEM_CRIT_ZONE,   1, 0},};
@@ -97,7 +140,7 @@ static int GetShm (stack_t* stack, key_t key, int size, int flag)
         return -1;
     }
 
-    stack->data = shmat (stack->shmid, NULL, SHM_RDONLY);
+    stack->data = shmat (stack->shmid, NULL, 0);
     if (stack->data == (void*) -1)
     {
         perror ("Shmat error");
@@ -119,14 +162,16 @@ int detach_stack (stack_t* stack)
 
     if (buf.shm_nattch == 1 && (buf.shm_perm.mode & SHM_DEST))
     {
-        semctl (stack->semid, 0, IPC_RMID);
+        semctl (stack->semid, 2, IPC_RMID);
         shmdt (stack->data);
+        // printf ("deleted\n");
     }
     else
     {
         shmdt (stack->data);
         sops.sem_op = 1;
         semop (stack->semid, &sops, 1);
+        // printf ("unlocked\n");
     }
 
     stack->data = NULL;

@@ -23,7 +23,7 @@ int main()
     if (!original)
     {
         sleep (5);
-        printf ("%d\n", get_size (stack));
+        printf ("%d\n", get_count (stack));
     }
 
     detach_stack (stack);
