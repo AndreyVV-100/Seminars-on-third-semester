@@ -27,8 +27,8 @@ enum WaitModes
     TIME_WAIT = 1
 };
 
-static enum WaitModes WAIT_MODE = INF_WAIT;
-static struct timespec TIMEOUT = {};
+// static enum WaitModes WAIT_MODE = INF_WAIT;
+// static struct timespec TIMEOUT = {};
 static struct timespec MAGIC   = {0, 50000000};
 
 typedef struct
@@ -76,7 +76,7 @@ stack_t* attach_stack (key_t key, int size) // ToDo: COPYPASTE!!!! VERY BIG FUNC
 
         while (wait)
         {
-            printf ("help me!\n");
+            // printf ("help me!\n");
             if (semop (stack->semid, &sops, 1))
             {
                 if (errno == EAGAIN)
@@ -157,6 +157,7 @@ int detach_stack (stack_t* stack)
     struct sembuf sops = {SEM_IS_CREATED, -1, 0};
     semop (stack->semid, &sops, 1);
 
+    nanosleep (&MAGIC, NULL);
     struct shmid_ds buf = {};
     shmctl (stack->shmid, IPC_STAT, &buf);
 
@@ -212,7 +213,7 @@ int push (stack_t* stack, size_t val)
     if (0 <= size && size < capacity)
     {
         stack->data[size + STK_SHIFT] = val;
-        stack->data[STK_SIZE]++;
+        stack->data[STK_SIZE] = size + 1;
     }
     else
         ret_val = -1;
@@ -229,11 +230,11 @@ int pop (stack_t* stack, size_t* val)
     struct sembuf sops = {SEM_CRIT_ZONE, -1, 0};
     semop (stack->semid, &sops, 1);
 
-    int size = get_size (stack);
+    int size = get_count (stack);
     if (size > 0)
     {
-        *val = stack->data[size + STK_SHIFT - 1];
-        stack->data[STK_SIZE]--;
+        stack->data[STK_SIZE] = size - 1;
+        *val = stack->data[size + STK_SHIFT];
     }
     else
         ret_val = -1;

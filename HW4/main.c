@@ -9,7 +9,7 @@ int main()
 {
     key_t key = ftok ("stack.c", 228);
 
-    struct stack_t* stack = attach_stack (key, 1024);
+    struct stack_t* stack = attach_stack (key, 10000);
     mark_destruct (stack);
     int original = 0;
 
@@ -17,9 +17,13 @@ int main()
         original += !fork ();
 
     push (stack, getpid());
+    push (stack, getpid());
+    push (stack, getpid());
     size_t val = 0;
     pop (stack, &val);
-
+    pop (stack, &val);
+    pop (stack, &val);
+    
     if (!original)
     {
         sleep (5);
